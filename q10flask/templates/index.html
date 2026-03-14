@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Q10://FLASK</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+
+    :root {
+      --bg: #040a04;
+      --bg2: #081208;
+      --green: #00ff41;
+      --green-dim: #00aa2a;
+      --green-faint: #003a0e;
+      --amber: #ffb300;
+      --red: #ff2244;
+      --border: #00ff4133;
+      --text: #c8ffc8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* screen flicker */
+    @keyframes flicker {
+      0%,100% { opacity: 1; }
+      92% { opacity: 1; }
+      93% { opacity: 0.94; }
+      94% { opacity: 1; }
+      96% { opacity: 0.97; }
+    }
+    body { animation: flicker 8s infinite; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg2);
+    }
+
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--green);
+      text-shadow: 0 0 12px var(--green);
+      letter-spacing: 2px;
+    }
+
+    .logo span { color: var(--amber); }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+      50% { opacity: 0.5; box-shadow: 0 0 2px var(--green); }
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 4px;
+      text-align: center;
+      cursor: pointer;
+      color: var(--green-dim);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .tab.active {
+      color: var(--green);
+      border-bottom-color: var(--green);
+      text-shadow: 0 0 8px var(--green);
+    }
+
+    .panel { display: none; padding: 10px; }
+    .panel.active { display: block; }
+
+    /* SYS INFO */
+    .sysinfo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .sys-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 8px;
+      border-radius: 2px;
+    }
+    .sys-card .label {
+      color: var(--green-dim);
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .sys-card .value {
+      color: var(--green);
+      font-size: 14px;
+      text-shadow: 0 0 6px var(--green);
+      word-break: break-all;
+    }
+
+    #refresh-btn {
+      width: 100%;
+      margin-top: 4px;
+    }
+
+    /* NOTES */
+    .note-input-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .note-input-row input {
+      flex: 1;
+    }
+
+    .note-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green-dim);
+      padding: 8px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      animation: fadein 0.2s ease;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; } }
+
+    .note-text { flex: 1; line-height: 1.5; word-break: break-word; }
+    .note-ts { color: var(--green-dim); font-size: 10px; white-space: nowrap; }
+    .note-del {
+      background: none;
+      border: none;
+      color: var(--red);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+    }
+
+    /* SHELL */
+    .shell-output {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 10px;
+      min-height: 120px;
+      max-height: 240px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--green);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .shell-input-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .prompt {
+      color: var(--green);
+      text-shadow: 0 0 6px var(--green);
+      white-space: nowrap;
+    }
+
+    /* SHARED INPUTS */
+    input[type=text] {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 13px;
+      padding: 7px 8px;
+      outline: none;
+      width: 100%;
+      caret-color: var(--green);
+    }
+    input[type=text]:focus {
+      border-color: var(--green-dim);
+      box-shadow: 0 0 8px var(--green-faint);
+    }
+    input[type=text]::placeholder { color: #1a4a1a; }
+
+    button {
+      background: var(--green-faint);
+      border: 1px solid var(--green-dim);
+      color: var(--green);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 12px;
+      padding: 7px 12px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.1s;
+      white-space: nowrap;
+    }
+    button:active {
+      background: var(--green-dim);
+      color: var(--bg);
+    }
+
+    .cmd-hint {
+      font-size: 10px;
+      color: var(--green-dim);
+      margin-top: 6px;
+      line-height: 1.8;
+    }
+    .cmd-hint span {
+      display: inline-block;
+      background: var(--green-faint);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      margin: 2px;
+      cursor: pointer;
+    }
+    .cmd-hint span:active { background: var(--green-dim); color: var(--bg); }
+
+    #clock {
+      font-size: 10px;
+      color: var(--green-dim);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Q10<span>://</span>FLASK</div>
+  <div id="clock">--:--:--</div>
+  <div class="status-dot"></div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('sys')">SYS</div>
+  <div class="tab" onclick="switchTab('notes')">NOTES</div>
+  <div class="tab" onclick="switchTab('shell')">SHELL</div>
+</div>
+
+<!-- SYS PANEL -->
+<div class="panel active" id="panel-sys">
+  <div class="sysinfo-grid">
+    <div class="sys-card">
+      <div class="label">Platform</div>
+      <div class="value" id="si-platform">{{ sysinfo.platform }}</div>
+    </div>
+    <div class="sys-card">
+      <div class="label">Machine</div>
+      <div class="value" id="si-machine">{{ sysinfo.machine }}</div>
+    </div>
+    <div class="sys-card">
+      <div class="label">Node</div>
+      <div class="value" id="si-node">{{ sysinfo.node }}</div>
+    </div>
+    <div class="sys-card">
+      <div class="label">Uptime</div>
+      <div class="value" id="si-uptime">{{ sysinfo.uptime }}</div>
+    </div>
+    <div class="sys-card">
+      <div class="label">Mem Total</div>
+      <div class="value" id="si-mem-total">{{ sysinfo.mem_total }}</div>
+    </div>
+    <div class="sys-card">
+      <div class="label">Mem Free</div>
+      <div class="value" id="si-mem-free">{{ sysinfo.mem_free }}</div>
+    </div>
+  </div>
+  <button id="refresh-btn" onclick="refreshSys()">[ REFRESH ]</button>
+</div>
+
+<!-- NOTES PANEL -->
+<div class="panel" id="panel-notes">
+  <div class="note-input-row">
+    <input type="text" id="note-input" placeholder="type a note..." maxlength="200">
+    <button onclick="addNote()">ADD</button>
+  </div>
+  <div id="notes-list"></div>
+</div>
+
+<!-- SHELL PANEL -->
+<div class="panel" id="panel-shell">
+  <div class="shell-output" id="shell-output">// whitelisted commands only
+// tap a shortcut or type below
+</div>
+  <div class="shell-input-row">
+    <span class="prompt">bb10$&nbsp;</span>
+    <input type="text" id="shell-input" placeholder="ls, pwd, df, ps...">
+    <button onclick="runCmd()">RUN</button>
+  </div>
+  <div class="cmd-hint">
+    quick:
+    <span onclick="setCmd('ls')">ls</span>
+    <span onclick="setCmd('pwd')">pwd</span>
+    <span onclick="setCmd('uname -a')">uname</span>
+    <span onclick="setCmd('df -h')">df</span>
+    <span onclick="setCmd('uptime')">uptime</span>
+    <span onclick="setCmd('ps')">ps</span>
+    <span onclick="setCmd('whoami')">whoami</span>
+    <span onclick="setCmd('date')">date</span>
+  </div>
+</div>
+
+<script>
+  // Clock
+  function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toTimeString().slice(0,8);
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Tabs
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => {
+      t.classList.toggle('active', ['sys','notes','shell'][i] === name);
+    });
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'notes') loadNotes();
+  }
+
+  // Sysinfo
+  async function refreshSys() {
+    const btn = document.getElementById('refresh-btn');
+    btn.textContent = '[ ... ]';
+    const r = await fetch('/api/sysinfo');
+    const d = await r.json();
+    document.getElementById('si-platform').textContent = d.platform;
+    document.getElementById('si-machine').textContent = d.machine;
+    document.getElementById('si-node').textContent = d.node;
+    document.getElementById('si-uptime').textContent = d.uptime;
+    document.getElementById('si-mem-total').textContent = d.mem_total;
+    document.getElementById('si-mem-free').textContent = d.mem_free;
+    btn.textContent = '[ REFRESH ]';
+  }
+
+  // Notes
+  async function loadNotes() {
+    const r = await fetch('/api/notes');
+    const notes = await r.json();
+    const list = document.getElementById('notes-list');
+    if (!notes.length) {
+      list.innerHTML = '<div style="color:#1a4a1a;padding:10px">// no notes yet</div>';
+      return;
+    }
+    list.innerHTML = notes.map(n => `
+      <div class="note-item" id="note-${n.id}">
+        <div class="note-text">${escHtml(n.text)}</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="note-ts">${n.ts}</span>
+          <button class="note-del" onclick="delNote(${n.id})">✕</button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function addNote() {
+    const inp = document.getElementById('note-input');
+    const text = inp.value.trim();
+    if (!text) return;
+    await fetch('/api/notes', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({text})
+    });
+    inp.value = '';
+    loadNotes();
+  }
+
+  async function delNote(id) {
+    await fetch('/api/notes/' + id, {method: 'DELETE'});
+    const el = document.getElementById('note-' + id);
+    if (el) el.style.opacity = '0';
+    setTimeout(loadNotes, 200);
+  }
+
+  document.getElementById('note-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addNote();
+  });
+
+  // Shell
+  function setCmd(cmd) {
+    document.getElementById('shell-input').value = cmd;
+  }
+
+  async function runCmd() {
+    const inp = document.getElementById('shell-input');
+    const cmd = inp.value.trim();
+    if (!cmd) return;
+    const out = document.getElementById('shell-output');
+    out.textContent += `\nbb10$ ${cmd}\n`;
+    const r = await fetch('/api/shell', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({cmd})
+    });
+    const d = await r.json();
+    out.textContent += d.output + '\n';
+    out.scrollTop = out.scrollHeight;
+    inp.value = '';
+  }
+
+  document.getElementById('shell-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runCmd();
+  });
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
