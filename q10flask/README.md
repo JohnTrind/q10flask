@@ -61,3 +61,19 @@ ifconfig
 ```bash
 PORT=8080 python app.py
 ```
+
+---
+
+## Also in this repo
+
+### dungeon/
+A curses roguelike (**DELVE**) built for the Q10 keyboard. Pure Python stdlib, no dependencies.
+
+```bash
+python dungeon/dungeon.py
+```
+
+Keys: arrows or `hjkl`/`wasd` · `i` inventory · `g` grab · `.` wait · `q` quit
+
+### q10web/
+Standalone Flask server variant — alternative layout, single `server.py` with no subfolders. Useful as a lighter drop-in.
